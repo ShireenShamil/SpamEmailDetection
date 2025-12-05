@@ -17,3 +17,6 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 import warnings
 warnings.filterwarnings('ignore')
+
+data = pd.read_csv('Emails.csv')
+data.head()
