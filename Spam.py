@@ -85,3 +85,53 @@ plot_word_cloud(balanced_data[balanced_data['label'] == 'ham'], typ='Non-Spam')
 plot_word_cloud(balanced_data[balanced_data['label'] == 'spam'], typ='Spam')
 
 
+train_X, test_X, train_Y, test_Y = train_test_split(
+    balanced_data['text'], balanced_data['label'], test_size=0.2, random_state=42
+)
+
+tokenizer = Tokenizer()
+tokenizer.fit_on_texts(train_X)
+
+train_sequences = tokenizer.texts_to_sequences(train_X)
+test_sequences = tokenizer.texts_to_sequences(test_X)
+
+max_len = 100  # Maximum sequence length
+train_sequences = pad_sequences(train_sequences, maxlen=max_len, padding='post', truncating='post')
+test_sequences = pad_sequences(test_sequences, maxlen=max_len, padding='post', truncating='post')
+
+train_Y = (train_Y == 'spam').astype(int)
+test_Y = (test_Y == 'spam').astype(int)
+
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Embedding(input_dim=len(tokenizer.word_index) + 1, output_dim=32, input_length=max_len),
+    tf.keras.layers.LSTM(16),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')  # Output layer
+])
+
+model.compile(
+    loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+    optimizer='adam',
+    metrics=['accuracy']
+)
+
+model.summary()
+
+es = EarlyStopping(patience=3, monitor='val_accuracy', restore_best_weights=True)
+lr = ReduceLROnPlateau(patience=2, monitor='val_loss', factor=0.5, verbose=0)
+
+history = model.fit(
+    train_sequences, train_Y,
+    validation_data=(test_sequences, test_Y),
+    epochs=20,
+    batch_size=32,
+    callbacks=[lr, es]
+)
+
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend()
+plt.show()
